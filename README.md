@@ -124,7 +124,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/bodgit/wud"
 	"github.com/bodgit/wud/wux"
 )
 
