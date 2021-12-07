@@ -98,7 +98,7 @@ func (w *writer) Write(p []byte) (n int, err error) {
 		w.table[w.sector] = v
 		w.sector++
 
-		// Append the sector to the underyling writer, or drop it if
+		// Append the sector to the underlying writer, or drop it if
 		// we've seen it before
 		var writer io.Writer = ioutil.Discard
 		if !ok {
