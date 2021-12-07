@@ -20,7 +20,7 @@ type reader struct {
 }
 
 var (
-	ErrBadMagic = errors.New("bad magic")
+	ErrBadMagic = errors.New("wux: bad magic")
 )
 
 func NewReader(ra io.ReaderAt) (wud.Reader, error) {
@@ -41,7 +41,7 @@ func NewReader(ra io.ReaderAt) (wud.Reader, error) {
 		return nil, ErrBadMagic
 	}
 	if h.SectorSize < 0x100 || h.SectorSize >= 0x10000000 {
-		return nil, errors.New("bad sector size")
+		return nil, errors.New("wux: bad sector size")
 	}
 
 	r.limit = int64(h.UncompressedSize)
@@ -115,7 +115,7 @@ func (r *reader) ReadAt(p []byte, off int64) (n int, err error) {
 func (r *reader) Seek(offset int64, whence int) (int64, error) {
 	switch whence {
 	default:
-		return 0, errors.New("Seek: invalid whence")
+		return 0, errors.New("wux: invalid whence")
 	case io.SeekStart:
 		break
 	case io.SeekCurrent:
@@ -124,7 +124,7 @@ func (r *reader) Seek(offset int64, whence int) (int64, error) {
 		offset += r.limit
 	}
 	if offset < 0 {
-		return 0, errors.New("Seek: invalid offset")
+		return 0, errors.New("wux: invalid offset")
 	}
 	r.off = offset
 	return offset, nil

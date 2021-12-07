@@ -61,7 +61,7 @@ func newPartitionTable(r io.Reader) (partitionTable, error) {
 		return nil, err
 	}
 	if pth.Magic != magic {
-		return nil, errors.New("bad magic")
+		return nil, errors.New("wud: bad magic")
 	}
 
 	// Skip to offset 0x800
@@ -92,7 +92,7 @@ func newPartitionTable(r io.Reader) (partitionTable, error) {
 
 	// Check the checksum is correct
 	if bytes.Compare(h.Sum(nil), pth.Checksum[:]) != 0 {
-		return nil, errors.New("bad TOC checksum")
+		return nil, errors.New("wud: bad TOC checksum")
 	}
 
 	return pt, nil
@@ -104,7 +104,7 @@ func (pt partitionTable) findPartition(prefix string) (string, int64, error) {
 			return k, v, nil
 		}
 	}
-	return "", 0, errors.New("can't find partition")
+	return "", 0, errors.New("wud: can't find partition")
 }
 
 const (
@@ -139,13 +139,13 @@ func NewWUD(r readerutil.SizeReaderAt, commonKey, gameKey []byte) (*WUD, error) 
 	w.r = r
 
 	if r.Size() != int64(UncompressedSize) {
-		return nil, errors.New("wrong size")
+		return nil, errors.New("wud: wrong size")
 	}
 
 	var err error
 
 	if len(commonKey) != keySize {
-		return nil, errors.New("wrong common key size")
+		return nil, errors.New("wud: wrong common key size")
 	}
 	w.common, err = aes.NewCipher(commonKey)
 	if err != nil {
@@ -153,7 +153,7 @@ func NewWUD(r readerutil.SizeReaderAt, commonKey, gameKey []byte) (*WUD, error) 
 	}
 
 	if len(gameKey) != keySize {
-		return nil, errors.New("wrong game key size")
+		return nil, errors.New("wud: wrong game key size")
 	}
 	w.game, err = aes.NewCipher(gameKey)
 	if err != nil {
@@ -179,7 +179,7 @@ func NewWUD(r readerutil.SizeReaderAt, commonKey, gameKey []byte) (*WUD, error) 
 
 	si, ok := w.pt["SI"]
 	if !ok {
-		return nil, errors.New("can't find SI partition")
+		return nil, errors.New("wud: can't find SI partition")
 	}
 
 	// SI partition, skipping the first sector
@@ -196,7 +196,7 @@ func NewWUD(r readerutil.SizeReaderAt, commonKey, gameKey []byte) (*WUD, error) 
 		return nil, err
 	}
 	if fh.Magic != 0x46535400 { // "FST"+0
-		return nil, errors.New("bad magic")
+		return nil, errors.New("wud: bad magic")
 	}
 
 	// Skip over secondary headers
@@ -222,7 +222,7 @@ func NewWUD(r readerutil.SizeReaderAt, commonKey, gameKey []byte) (*WUD, error) 
 		return nil, err
 	}
 	if fe.TypeName>>24 != 1 || fe.TypeName&0xffffff != 0 {
-		return nil, errors.New("bad root entry")
+		return nil, errors.New("wud: bad root entry")
 	}
 
 	entries := int(fe.Size)
@@ -311,7 +311,7 @@ func NewWUD(r readerutil.SizeReaderAt, commonKey, gameKey []byte) (*WUD, error) 
 func (w *WUD) extractFile(filename, target string) (io.Reader, io.Closer, error) {
 	f, ok := w.files[filename]
 	if !ok {
-		return nil, nil, errors.New("file not found")
+		return nil, nil, errors.New("wud: file not found")
 	}
 	wc, err := fs.Create(target)
 	if err != nil {

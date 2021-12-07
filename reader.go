@@ -100,7 +100,7 @@ func (r *reader) ReadAt(p []byte, off int64) (int, error) {
 func (r *reader) Seek(offset int64, whence int) (int64, error) {
 	switch whence {
 	default:
-		return 0, errors.New("Seek: invalid whence")
+		return 0, errors.New("wud: invalid whence")
 	case io.SeekStart:
 		break
 	case io.SeekCurrent:
@@ -109,7 +109,7 @@ func (r *reader) Seek(offset int64, whence int) (int64, error) {
 		offset += r.Size()
 	}
 	if offset < 0 {
-		return 0, errors.New("Seek: invalid offset")
+		return 0, errors.New("wud: invalid offset")
 	}
 	r.off = offset
 	return offset, nil

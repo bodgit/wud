@@ -118,7 +118,7 @@ func (w *writer) Close() error {
 	}
 
 	if w.b.Len() != 0 || w.off != w.limit {
-		return errors.New("not enough data written")
+		return errors.New("wux: not enough data written")
 	}
 
 	h := header{}
