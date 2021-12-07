@@ -1,3 +1,72 @@
+/*
+Package wud implements reading of Nintendo Wii-U disc images. These can either
+be a regular 23 GB file, split into 2 GB parts, or compressed.
+
+Example usage:
+
+        import (
+                "io"
+                "os"
+
+                "github.com/bodgit/wud"
+                "github.com/bodgit/wud/wux"
+                "github.com/hashicorp/go-multierror"
+        )
+
+        // openFile will first try and open name as a compressed image, then as
+        // a regular or split image.
+        func openFile(name string) (wud.Reader, io.Closer, error) {
+                f, err := os.Open(name)
+                if err != nil {
+                        return nil, nil ,err
+                }
+
+                if r, err := wux.NewReader(f); err != nil {
+                        if err != wux.ErrBadMagic {
+                                return nil, nil, multierror.Append(err, f.Close())
+                        }
+                        if err = f.Close(); err != nil {
+                                return nil, nil, err
+                        }
+                } else {
+                        return r, f, nil
+                }
+
+                rc, err := wud.OpenReader(name)
+                if err != nil {
+                        return nil, nil, err
+                }
+
+                return rc, rc, nil
+        }
+
+        func main() {
+                r, c, err := openFile(os.Args[1])
+                if err != nil {
+                        panic(err)
+                }
+                defer c.Close()
+
+                commonKey, err := os.ReadFile(os.Args[2])
+                if err != nil {
+                        panic(err)
+                }
+
+                gameKey, err := os.ReadFile(os.Args[3])
+                if err != nil {
+                        panic(err)
+                }
+
+                w, err := wud.NewWUD(r, commonKey, gameKey)
+                if err != nil {
+                        panic(err)
+                }
+
+                if err = w.Extract(os.Args[4]); err != nil {
+                        panic(err)
+                }
+        }
+*/
 package wud
 
 import (
@@ -23,23 +92,30 @@ import (
 )
 
 const (
-	Extension               = ".wud"
-	SectorSize       uint32 = 0x8000
+	// Extension is the conventional file extension used
+	Extension = ".wud"
+	// SectorSize is the sector size for Wii-U disc images
+	SectorSize uint32 = 0x8000
+	// UncompressedSize is the uncompressed size for Wii-U disc images
 	UncompressedSize uint64 = 25025314816
-	CommonKeyFile           = "common.key"
-	GameKeyFile             = "game.key"
-	keySize                 = 16
-	magic            uint32 = 0xcca6e67b
+	// CommonKeyFile represents the standard "common.key" filename
+	CommonKeyFile = "common.key"
+	// GameKeyFile represents the standard "game.key" filename
+	GameKeyFile        = "game.key"
+	keySize            = 16
+	magic       uint32 = 0xcca6e67b
 )
 
 var fs = afero.NewOsFs()
 
+// A Reader has Read, Seek, ReadAt, and Size methods.
 type Reader interface {
 	io.Reader
 	io.Seeker
 	readerutil.SizeReaderAt
 }
 
+// A ReadCloser extends the Reader interface to also have a Close method.
 type ReadCloser interface {
 	Reader
 	io.Closer
@@ -125,6 +201,7 @@ func (f file) reader(r io.ReaderAt, block cipher.Block) io.Reader {
 	return io.LimitReader(cbc, f.size)
 }
 
+// WUD represents a Wii-U disc image
 type WUD struct {
 	r      io.ReaderAt
 	common cipher.Block
@@ -134,6 +211,8 @@ type WUD struct {
 	files  map[string]file
 }
 
+// NewWUD returns a WUD read from the provided r, using the commonKey and
+// gameKey to decrypt where necessary.
 func NewWUD(r readerutil.SizeReaderAt, commonKey, gameKey []byte) (*WUD, error) {
 	w := new(WUD)
 	w.r = r
@@ -320,6 +399,8 @@ func (w *WUD) extractFile(filename, target string) (io.Reader, io.Closer, error)
 	return io.TeeReader(f.reader(w.r, w.game), wc), wc, nil
 }
 
+// Extract writes all of the files from the underyling disc image to the passed
+// directory, which is created if necessary.
 func (w *WUD) Extract(directory string) error {
 	directory = filepath.Join(directory, w.title)
 

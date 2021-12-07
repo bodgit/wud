@@ -20,9 +20,11 @@ type reader struct {
 }
 
 var (
+	// ErrBadMagic is returned if the first eight bytes do not contain the correct values.
 	ErrBadMagic = errors.New("wux: bad magic")
 )
 
+// NewReader returns a new wud.Reader that reads and decompresses from ra.
 func NewReader(ra io.ReaderAt) (wud.Reader, error) {
 	r := new(reader)
 	r.r = ra

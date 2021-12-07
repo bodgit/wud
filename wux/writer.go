@@ -25,6 +25,7 @@ type writer struct {
 	table      []uint32
 }
 
+// NewWriter returns an io.WriteCloser that compresses and writes to ws in sectorSize chunks.
 func NewWriter(ws io.WriteSeeker, sectorSize uint32, uncompressedSize uint64) (io.WriteCloser, error) {
 	w := &writer{
 		w: ws,

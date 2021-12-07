@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	multipart = "game_part"
+	multipart = "game_part" // This is used by wudump when writing to FAT32
 )
 
 type reader struct {
@@ -21,6 +21,9 @@ type reader struct {
 	off int64
 }
 
+// OpenReader opens the disc image indicated by name and returns a new
+// ReadCloser. If name matches "game_part1.wud" then the image is assumed to be
+// split into 2 GB parts and each sequential part will also be opened.
 func OpenReader(name string) (ReadCloser, error) {
 	f, err := fs.Open(name)
 	if err != nil {

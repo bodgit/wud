@@ -1,6 +1,13 @@
+/*
+Package wux implements compression of Nintendo Wii-U disc images. The technique
+deduplicates the original disc image on a sector-by-sector basis and relies on
+the fact that despite the disc image being of a fixed size of around 23 GB, the
+majority of that space will be unused.
+*/
 package wux
 
 const (
+	// Extension is the conventional file extension used
 	Extension        = ".wux"
 	magic0    uint32 = 0x30585557 // "WUX0"
 	magic1    uint32 = 0x1099d02e
