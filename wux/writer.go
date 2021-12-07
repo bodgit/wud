@@ -122,8 +122,7 @@ func (w *writer) Close() error {
 		return errors.New("wux: not enough data written")
 	}
 
-	h := header{}
-	const headerSize = int64(unsafe.Sizeof(h))
+	const headerSize = int64(unsafe.Sizeof(header{}))
 
 	if _, err := w.w.Seek(headerSize, io.SeekStart); err != nil {
 		return err
