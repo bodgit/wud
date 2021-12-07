@@ -21,7 +21,7 @@ type reader struct {
 	off int64
 }
 
-func OpenReader(name string) (WUDReadCloser, error) {
+func OpenReader(name string) (ReadCloser, error) {
 	f, err := fs.Open(name)
 	if err != nil {
 		return nil, err

@@ -23,7 +23,7 @@ var (
 	ErrBadMagic = errors.New("bad magic")
 )
 
-func NewReader(ra io.ReaderAt) (wud.WUDReader, error) {
+func NewReader(ra io.ReaderAt) (wud.Reader, error) {
 	r := new(reader)
 	r.r = ra
 

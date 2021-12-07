@@ -126,7 +126,7 @@ func decompressWUX(name, target string) error {
 	return nil
 }
 
-func openFile(name string) (wud.WUDReader, io.Closer, error) {
+func openFile(name string) (wud.Reader, io.Closer, error) {
 	f, err := fs.Open(name)
 	if err != nil {
 		return nil, nil, err

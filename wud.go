@@ -34,15 +34,14 @@ const (
 
 var fs = afero.NewOsFs()
 
-type WUDReader interface {
-	Size() int64
+type Reader interface {
 	io.Reader
-	io.ReaderAt
 	io.Seeker
+	readerutil.SizeReaderAt
 }
 
-type WUDReadCloser interface {
-	WUDReader
+type ReadCloser interface {
+	Reader
 	io.Closer
 }
 
