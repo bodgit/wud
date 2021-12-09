@@ -399,7 +399,7 @@ func (w *WUD) extractFile(filename, target string) (io.Reader, io.Closer, error)
 	return io.TeeReader(f.reader(w.r, w.game), wc), wc, nil
 }
 
-// Extract writes all of the files from the underyling disc image to the passed
+// Extract writes all of the files from the underlying disc image to the passed
 // directory, which is created if necessary.
 func (w *WUD) Extract(directory string) error {
 	directory = filepath.Join(directory, w.title)
