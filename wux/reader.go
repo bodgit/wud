@@ -19,6 +19,11 @@ type reader struct {
 	table      []uint32
 }
 
+type readcloser struct {
+	r wud.Reader
+	c io.Closer
+}
+
 var (
 	// ErrBadMagic is returned if the first eight bytes do not contain the correct values.
 	ErrBadMagic = errors.New("wux: bad magic")
@@ -65,6 +70,19 @@ func NewReader(ra io.ReaderAt) (wud.Reader, error) {
 	r.base = (headerSize + tableSize<<2 + r.sectorSize - 1) & (-r.sectorSize)
 
 	return r, nil
+}
+
+// NewReadCloser returns a new wud.ReadCloser that reads and decompresses from rac.
+func NewReadCloser(rac readerutil.ReaderAtCloser) (wud.ReadCloser, error) {
+	rc := new(readcloser)
+
+	var err error
+	if rc.r, err = NewReader(rac); err != nil {
+		return nil, err
+	}
+	rc.c = rac
+
+	return rc, nil
 }
 
 func (r *reader) Size() int64 {
@@ -130,4 +148,24 @@ func (r *reader) Seek(offset int64, whence int) (int64, error) {
 	}
 	r.off = offset
 	return offset, nil
+}
+
+func (rc *readcloser) Read(p []byte) (int, error) {
+	return rc.r.Read(p)
+}
+
+func (rc *readcloser) ReadAt(p []byte, off int64) (int, error) {
+	return rc.r.ReadAt(p, off)
+}
+
+func (rc *readcloser) Seek(offset int64, whence int) (int64, error) {
+	return rc.r.Seek(offset, whence)
+}
+
+func (rc *readcloser) Size() int64 {
+	return rc.r.Size()
+}
+
+func (rc *readcloser) Close() error {
+	return rc.c.Close()
 }
