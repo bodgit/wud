@@ -25,37 +25,32 @@ import (
 
 // openFile will first try and open name as a compressed image, then as
 // a regular or split image.
-func openFile(name string) (wud.Reader, io.Closer, error) {
+func openFile(name string) (wud.ReadCloser, error) {
         f, err := os.Open(name)
         if err != nil {
-                return nil, nil ,err
+                return nil, err
         }
 
-        if r, err := wux.NewReader(f); err != nil {
+        if rc, err := wux.NewReadCloser(f); err != nil {
                 if err != wux.ErrBadMagic {
-                        return nil, nil, multierror.Append(err, f.Close())
+                        return nil, multierror.Append(err, f.Close())
                 }
                 if err = f.Close(); err != nil {
-                        return nil, nil, err
+                        return nil, err
                 }
         } else {
-                return r, f, nil
+                return rc, nil
         }
 
-        rc, err := wud.OpenReader(name)
-        if err != nil {
-                return nil, nil, err
-        }
-
-        return rc, rc, nil
+        return wud.OpenReader(name)
 }
 
 func main() {
-        r, c, err := openFile(os.Args[1])
+        rc, err := openFile(os.Args[1])
         if err != nil {
                 panic(err)
         }
-        defer c.Close()
+        defer rc.Close()
 
         commonKey, err := os.ReadFile(os.Args[2])
         if err != nil {
@@ -67,7 +62,7 @@ func main() {
                 panic(err)
         }
 
-        w, err := wud.NewWUD(r, commonKey, gameKey)
+        w, err := wud.NewWUD(rc, commonKey, gameKey)
         if err != nil {
                 panic(err)
         }

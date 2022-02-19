@@ -126,37 +126,32 @@ func decompressWUX(name, target string) error {
 	return nil
 }
 
-func openFile(name string) (wud.Reader, io.Closer, error) {
+func openFile(name string) (wud.ReadCloser, error) {
 	f, err := fs.Open(name)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	if r, err := wux.NewReader(f); err != nil {
+	if rc, err := wux.NewReadCloser(f); err != nil {
 		if err != wux.ErrBadMagic {
-			return nil, nil, multierror.Append(err, f.Close())
+			return nil, multierror.Append(err, f.Close())
 		}
 		if err = f.Close(); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	} else {
-		return r, f, nil
+		return rc, nil
 	}
 
-	rc, err := wud.OpenReader(name)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return rc, rc, nil
+	return wud.OpenReader(name)
 }
 
 func extractWUD(name, common, game, directory string) error {
-	r, c, err := openFile(name)
+	rc, err := openFile(name)
 	if err != nil {
 		return err
 	}
-	defer c.Close()
+	defer rc.Close()
 
 	commonKey, err := afero.ReadFile(fs, common)
 	if err != nil {
@@ -168,7 +163,7 @@ func extractWUD(name, common, game, directory string) error {
 		return err
 	}
 
-	w, err := wud.NewWUD(r, commonKey, gameKey)
+	w, err := wud.NewWUD(rc, commonKey, gameKey)
 	if err != nil {
 		return err
 	}
