@@ -111,7 +111,7 @@ func (r *reader) Seek(offset int64, whence int) (int64, error) {
 	case io.SeekEnd:
 		offset += r.Size()
 	}
-	if offset < 0 {
+	if offset < 0 || offset > r.Size() {
 		return 0, errors.New("wud: invalid offset")
 	}
 	r.off = offset

@@ -8,9 +8,10 @@ package wux
 
 const (
 	// Extension is the conventional file extension used
-	Extension        = ".wux"
-	magic0    uint32 = 0x30585557 // "WUX0"
-	magic1    uint32 = 0x1099d02e
+	Extension = ".wux"
+
+	magic0 uint32 = 0x30585557 // "WUX0"
+	magic1 uint32 = 0x1099d02e
 )
 
 // The original tool read/wrote this using fread/fwrite so there's padding involved
