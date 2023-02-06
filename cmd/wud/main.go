@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"crypto/sha1"
 	"errors"
 	"fmt"
 	"io"
@@ -11,9 +9,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/bodgit/plumbing"
 	"github.com/bodgit/wud"
 	"github.com/bodgit/wud/wux"
 	"github.com/hashicorp/go-multierror"
+	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/afero"
 	"github.com/urfave/cli/v2"
 )
@@ -34,8 +34,16 @@ func init() {
 	}
 }
 
-func compressWUD(name, target string, verify bool) error {
-	rc, err := wud.OpenReader(name)
+func compress(src, dst string, verbose bool) error {
+	if dst == "" {
+		if ext := filepath.Ext(src); ext == wux.Extension {
+			return fmt.Errorf("source file %s already has %s extension", src, wux.Extension)
+		}
+
+		dst = strings.TrimSuffix(src, wud.Extension) + wux.Extension
+	}
+
+	rc, err := wud.OpenReader(src)
 	if err != nil {
 		return err
 	}
@@ -45,64 +53,40 @@ func compressWUD(name, target string, verify bool) error {
 		return fmt.Errorf("%s file is not %d bytes", wud.Extension, wud.UncompressedSize)
 	}
 
-	dst, err := fs.Create(target)
-	if err != nil {
-		return err
-	}
-
-	w, err := wux.NewWriter(dst, wud.SectorSize, wud.UncompressedSize)
-	if err != nil {
-		return multierror.Append(err, dst.Close())
-	}
-
 	var r io.Reader = rc
-	h := sha1.New() // Good enough, this isn't cryptographic
-	if verify {
-		r = io.TeeReader(rc, h)
+
+	if verbose {
+		pb := progressbar.DefaultBytes(rc.Size())
+		r = io.TeeReader(r, pb)
 	}
 
-	if _, err := io.Copy(w, r); err != nil {
-		err = multierror.Append(err, w.Close())
-		err = multierror.Append(err, dst.Close())
+	f, err := fs.Create(dst)
+	if err != nil {
 		return err
 	}
+	defer f.Close()
 
-	if err = w.Close(); err != nil {
+	w, err := wux.NewWriter(f, wud.SectorSize, wud.UncompressedSize)
+	if err != nil {
 		return err
 	}
-	if err = dst.Close(); err != nil {
-		return err
-	}
+	defer w.Close()
 
-	if verify {
-		sum := h.Sum(nil)
+	_, err = io.Copy(w, r)
 
-		f, err := fs.Open(target)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-
-		r, err := wux.NewReader(f)
-		if err != nil {
-			return err
-		}
-
-		h.Reset()
-		if _, err = io.Copy(h, r); err != nil {
-			return err
-		}
-
-		if bytes.Compare(sum, h.Sum(nil)) != 0 {
-			return errors.New("verification failed")
-		}
-	}
-
-	return nil
+	return err
 }
 
-func decompressWUX(name, target string) error {
-	f, err := fs.Open(name)
+func decompress(src, dst string, verbose bool) error {
+	if dst == "" {
+		if ext := filepath.Ext(src); ext == wud.Extension {
+			return fmt.Errorf("source file %s already has %s extension", src, wud.Extension)
+		}
+
+		dst = strings.TrimSuffix(src, wux.Extension) + wud.Extension
+	}
+
+	f, err := fs.Open(src)
 	if err != nil {
 		return err
 	}
@@ -113,17 +97,23 @@ func decompressWUX(name, target string) error {
 		return err
 	}
 
-	w, err := fs.Create(target)
+	var w io.WriteCloser
+
+	w, err = fs.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer w.Close()
 
-	if _, err = io.Copy(w, r); err != nil {
-		return err
+	if verbose {
+		pb := progressbar.DefaultBytes(r.Size())
+		w = plumbing.MultiWriteCloser(w, plumbing.NopWriteCloser(pb))
 	}
 
-	return nil
+	defer w.Close()
+
+	_, err = io.Copy(w, r)
+
+	return err
 }
 
 func openFile(name string) (wud.ReadCloser, error) {
@@ -146,7 +136,7 @@ func openFile(name string) (wud.ReadCloser, error) {
 	return wud.OpenReader(name)
 }
 
-func extractWUD(name, common, game, directory string) error {
+func extract(name, common, game, directory string) error {
 	rc, err := openFile(name)
 	if err != nil {
 		return err
@@ -199,35 +189,19 @@ func main() {
 			Name:        "compress",
 			Usage:       "Compress a " + wud.Extension + " file into a " + wux.Extension + " file",
 			Description: "",
-			ArgsUsage:   "FILE",
+			ArgsUsage:   "SOURCE [TARGET]",
 			Action: func(c *cli.Context) error {
 				if c.NArg() < 1 {
 					cli.ShowCommandHelpAndExit(c, c.Command.Name, 1)
 				}
 
-				file := c.Args().First()
-
-				target := c.Path("output")
-				if target == "" {
-					target = strings.TrimSuffix(file, filepath.Ext(file)) + wux.Extension
-				}
-
-				if err := compressWUD(file, target, c.Bool("verify")); err != nil {
-					return err
-				}
-
-				return nil
+				return compress(c.Args().Get(0), c.Args().Get(1), c.Bool("verbose"))
 			},
 			Flags: []cli.Flag{
-				&cli.PathFlag{
-					Name:    "output",
-					Aliases: []string{"o"},
-					Usage:   "write output to `FILE`",
-				},
 				&cli.BoolFlag{
-					Name:  "verify",
-					Usage: "verify the file matches",
-					Value: true,
+					Name:    "verbose",
+					Aliases: []string{"v"},
+					Usage:   "increase verbosity",
 				},
 			},
 		},
@@ -235,30 +209,19 @@ func main() {
 			Name:        "decompress",
 			Usage:       "Decompress a " + wux.Extension + " file back to a " + wud.Extension + " file",
 			Description: "",
-			ArgsUsage:   "FILE",
+			ArgsUsage:   "SOURCE [TARGET]",
 			Action: func(c *cli.Context) error {
 				if c.NArg() < 1 {
 					cli.ShowCommandHelpAndExit(c, c.Command.Name, 1)
 				}
 
-				file := c.Args().First()
-
-				target := c.Path("output")
-				if target == "" {
-					target = strings.TrimSuffix(file, filepath.Ext(file)) + wud.Extension
-				}
-
-				if err := decompressWUX(file, target); err != nil {
-					return err
-				}
-
-				return nil
+				return decompress(c.Args().Get(0), c.Args().Get(1), c.Bool("verbose"))
 			},
 			Flags: []cli.Flag{
-				&cli.PathFlag{
-					Name:    "output",
-					Aliases: []string{"o"},
-					Usage:   "write output to `FILE`",
+				&cli.BoolFlag{
+					Name:    "verbose",
+					Aliases: []string{"v"},
+					Usage:   "increase verbosity",
 				},
 			},
 		},
@@ -284,7 +247,7 @@ func main() {
 					game = filepath.Join(filepath.Dir(common), wud.GameKeyFile)
 				}
 
-				if err := extractWUD(file, common, game, c.Path("directory")); err != nil {
+				if err := extract(file, common, game, c.Path("directory")); err != nil {
 					return err
 				}
 

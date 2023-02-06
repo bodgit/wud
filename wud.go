@@ -167,7 +167,7 @@ func newPartitionTable(r io.Reader) (partitionTable, error) {
 	}
 
 	// Check the checksum is correct
-	if bytes.Compare(h.Sum(nil), pth.Checksum[:]) != 0 {
+	if !bytes.Equal(h.Sum(nil), pth.Checksum[:]) {
 		return nil, errors.New("wud: bad TOC checksum")
 	}
 
